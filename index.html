@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="w-full max-w-md bg-white rounded-lg shadow-lg flex flex-col">
+    <div id="chat-box" class="h-96 p-4 overflow-y-auto border-b border-gray-300 space-y-2"></div>
+
+    <div class="flex border-t border-gray-300">
+      <input id="name-input" type="text" placeholder="Your name"
+        class="w-1/3 p-2 border-r border-gray-300 focus:outline-none" />
+
+      <input id="msg-input" type="text" placeholder="Type a message..."
+        class="flex-1 p-2 focus:outline-none"
+        onkeydown="if(event.key === 'Enter') sendMessage()" />
+
+      <button onclick="sendMessage()" class="bg-blue-500 hover:bg-blue-600 text-white px-4">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // 🟡 Replace with your Firebase config ↓↓↓
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    // 🟢 Firebase Initialization
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const chatBox = document.getElementById('chat-box');
+    const nameInput = document.getElementById('name-input');
+    const msgInput = document.getElementById('msg-input');
+
+    function sendMessage() {
+      const name = nameInput.value.trim();
+      const msg = msgInput.value.trim();
+
+      if (!name || !msg) return;
+
+      db.ref('messages').push({
+        name: name,
+        text: msg,
+        timestamp: Date.now()
+      });
+
+      msgInput.value = '';
+    }
+
+    // Listen for new messages
+    db.ref('messages').on('child_added', snapshot => {
+      const data = snapshot.val();
+
+      const messageEl = document.createElement('div');
+      messageEl.innerHTML = `
+        <div class="p-2 rounded bg-gray-200">
+          <strong>${data.name}:</strong> ${data.text}
+        </div>
+      `;
+
+      chatBox.appendChild(messageEl);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+  </script>
+
+</body>
+</html>
