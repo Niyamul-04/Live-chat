@@ -1,80 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Realtime Chat</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Realtime Chat App</title>
+  <style>
+    /* Reset some default styles */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      color: #333;
+    }
+    #chat-container {
+      background: #fff;
+      width: 90%;
+      max-width: 480px;
+      height: 70vh;
+      display: flex;
+      flex-direction: column;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    #messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #f9f9f9;
+      font-size: 1rem;
+      line-height: 1.4;
+      scrollbar-width: thin;
+      scrollbar-color: #667eea #e0e0e0;
+    }
+    #messages::-webkit-scrollbar {
+      width: 8px;
+    }
+    #messages::-webkit-scrollbar-thumb {
+      background-color: #667eea;
+      border-radius: 4px;
+    }
+    #controls {
+      display: flex;
+      padding: 1rem;
+      background: #fafafa;
+      border-top: 1px solid #ddd;
+    }
+    #messageInput {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      font-size: 1rem;
+      border: 1.5px solid #ddd;
+      border-radius: 25px;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+    #messageInput:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 5px rgba(102, 126, 234, 0.6);
+    }
+    #sendBtn {
+      margin-left: 1rem;
+      background: #667eea;
+      border: none;
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 0 1.5rem;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 4px 10px rgba(102,126,234,0.4);
+    }
+    #sendBtn:hover:not(:disabled) {
+      background: #5561c9;
+    }
+    #sendBtn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    /* Message bubble styles */
+    .message {
+      max-width: 80%;
+      margin-bottom: 0.6rem;
+      padding: 0.6rem 1rem;
+      border-radius: 15px;
+      background: #667eea;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 2px 5px rgba(102,126,234,0.4);
+      word-wrap: break-word;
+      position: relative;
+      font-size: 0.9rem;
+    }
+    .message .time {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      margin-top: 0.3rem;
+      text-align: right;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-
-  <div class="w-full max-w-md bg-white rounded-lg shadow-lg flex flex-col">
-    <div id="chat-box" class="h-96 p-4 overflow-y-auto border-b border-gray-300 space-y-2"></div>
-
-    <div class="flex border-t border-gray-300">
-      <input id="name-input" type="text" placeholder="Your name"
-        class="w-1/3 p-2 border-r border-gray-300 focus:outline-none" />
-
-      <input id="msg-input" type="text" placeholder="Type a message..."
-        class="flex-1 p-2 focus:outline-none"
-        onkeydown="if(event.key === 'Enter') sendMessage()" />
-
-      <button onclick="sendMessage()" class="bg-blue-500 hover:bg-blue-600 text-white px-4">Send</button>
+<body>
+  <div id="chat-container">
+    <div id="messages"></div>
+    <div id="controls">
+      <input id="messageInput" type="text" placeholder="Type a message..." autocomplete="off" />
+      <button id="sendBtn" disabled>Send</button>
     </div>
   </div>
 
-  <script>
-    // 🟡 Replace with your Firebase config ↓↓↓
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "SENDER_ID",
-      appId: "APP_ID"
+      apiKey: "AIzaSyBbbgv-C-ruuzgoGLXqXUorwtg1NLzU0J4",
+      authDomain: "realtimechatapp-392df.firebaseapp.com",
+      projectId: "realtimechatapp-392df",
+      storageBucket: "realtimechatapp-392df.firebasestorage.app",
+      messagingSenderId: "938205714802",
+      appId: "1:938205714802:web:3f7408ad4a39111c8065eb",
+      databaseURL: "https://realtimechatapp-392df-default-rtdb.firebaseio.com/"
     };
 
-    // 🟢 Firebase Initialization
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const messagesRef = ref(database, "messages");
 
-    const chatBox = document.getElementById('chat-box');
-    const nameInput = document.getElementById('name-input');
-    const msgInput = document.getElementById('msg-input');
+    const sendBtn = document.getElementById("sendBtn");
+    const messageInput = document.getElementById("messageInput");
+    const messagesContainer = document.getElementById("messages");
 
-    function sendMessage() {
-      const name = nameInput.value.trim();
-      const msg = msgInput.value.trim();
+    // Enable send button only if input has text
+    messageInput.addEventListener("input", () => {
+      sendBtn.disabled = messageInput.value.trim() === "";
+    });
 
-      if (!name || !msg) return;
+    sendBtn.addEventListener("click", () => {
+      const text = messageInput.value.trim();
+      if (text) {
+        push(messagesRef, {
+          text,
+          time: Date.now()
+        });
+        messageInput.value = "";
+        sendBtn.disabled = true;
+      }
+    });
 
-      db.ref('messages').push({
-        name: name,
-        text: msg,
-        timestamp: Date.now()
-      });
+    onChildAdded(messagesRef, (data) => {
+      const msg = data.val();
+      const messageEl = document.createElement("div");
+      messageEl.classList.add("message");
 
-      msgInput.value = '';
-    }
+      const time = new Date(msg.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-    // Listen for new messages
-    db.ref('messages').on('child_added', snapshot => {
-      const data = snapshot.val();
-
-      const messageEl = document.createElement('div');
       messageEl.innerHTML = `
-        <div class="p-2 rounded bg-gray-200">
-          <strong>${data.name}:</strong> ${data.text}
-        </div>
+        ${msg.text}
+        <div class="time">${time}</div>
       `;
 
-      chatBox.appendChild(messageEl);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      messagesContainer.appendChild(messageEl);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+
+    // Send message on Enter press
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !sendBtn.disabled) {
+        sendBtn.click();
+      }
     });
   </script>
-
 </body>
 </html>
